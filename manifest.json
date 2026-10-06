@@ -1,0 +1,16 @@
+{
+  "name": "RBooSH POS",
+  "short_name": "RBooSH",
+  "description": "يبيع حتى بدون نت - طباعة حرارية وواتساب",
+  "start_url": "index.html",
+  "display": "standalone",
+  "background_color": "#0f0f0f",
+  "theme_color": "#FF5A00",
+  "icons": [
+    {
+      "src": "logo.png.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
