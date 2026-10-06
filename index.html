@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RBooSH POS - يبيع بدون نت</title>
+<style>
+body{font-family:system-ui;background:#0d1117;color:#fff;margin:0;padding:10px}
+.card{background:#161b22;border-radius:12px;padding:12px;margin-bottom:10px}
+input,button{width:100%;padding:12px;border-radius:8px;border:none;margin:5px 0;font-size:16px}
+button{background:#238636;color:#fff;font-weight:bold}
+.prod{display:flex;justify-content:space-between;background:#21262d;padding:10px;border-radius:8px;margin:4px 0}
+#bill{font-family:monospace;white-space:pre-line}
+</style>
+</head>
+<body>
+<h2>🧾 RBooSH POS - الحسكة</h2>
+
+<div class="card">
+<h3>إضافة منتج</h3>
+<input id="pname" placeholder="اسم المنتج مثلا: بيبسي">
+<input id="pprice" type="number" placeholder="السعر">
+<button onclick="addProd()">حفظ المنتج</button>
+</div>
+
+<div class="card">
+<h3>المنتجات</h3>
+<div id="products"></div>
+</div>
+
+<div class="card">
+<h3>الفاتورة</h3>
+<div id="bill">السلة فاضية</div>
+<h2 id="total">المجموع: 0 ل.س</h2>
+<button onclick="window.print()">🖨️ طباعة 58mm</button>
+<button onclick="sendWA()" style="background:#25D366">📲 ارسال واتساب</button>
+<button onclick="clearCart()" style="background:#da3633">مسح</button>
+</div>
+
+<script>
+let prods = JSON.parse(localStorage.getItem('rboosh_prods')||'[]');
+let cart = JSON.parse(localStorage.getItem('rboosh_cart')||'[]');
+function save(){localStorage.setItem('rboosh_prods',JSON.stringify(prods));localStorage.setItem('rboosh_cart',JSON.stringify(cart));render();}
+function addProd(){
+let n=pname.value, pr=Number(pprice.value);
+if(!n||!pr)return alert('عبّي البيانات');
+prods.push({n,pr});pname.value='';pprice.value='';save();
+}
+function addToCart(i){cart.push(prods[i]);save();}
+function clearCart(){cart=[];save();}
+function sendWA(){
+let txt=`*فاتورة RBooSH POS*%0A`;let tot=0;
+cart.forEach(c=>{txt+=`${c.n} - ${c.pr}%0A`;tot+=c.pr});
+txt+=`%0A*المجموع: ${tot} ل.س*`;
+window.open(`https://wa.me/?text=${txt}`,'_blank');
+}
+function render(){
+products.innerHTML=prods.map((p,i)=>`<div class="prod"><span>${p.n} - ${p.pr}</span><button onclick="addToCart(${i})" style="width:auto;padding:5px 10px">+ اضافة</button></div>`).join('');
+let tot=0;bill.textContent=cart.map(c=>{tot+=c.pr;return `${c.n} - ${c.pr}`}).join('\n')||'السلة فاضية';
+total.textContent=`المجموع: ${tot} ل.س`;
+}
+render();
+</script>
+</body>
+</html>
