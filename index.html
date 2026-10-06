@@ -2,64 +2,149 @@
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>RBooSH POS - يبيع بدون نت</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>RBooSH POS - يبيع حتى بدون نت</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#FF5A00">
+<link rel="icon" href="logo.png.png">
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <style>
-body{font-family:system-ui;background:#0d1117;color:#fff;margin:0;padding:10px}
-.card{background:#161b22;border-radius:12px;padding:12px;margin-bottom:10px}
-input,button{width:100%;padding:12px;border-radius:8px;border:none;margin:5px 0;font-size:16px}
-button{background:#238636;color:#fff;font-weight:bold}
-.prod{display:flex;justify-content:space-between;background:#21262d;padding:10px;border-radius:8px;margin:4px 0}
-#bill{font-family:monospace;white-space:pre-line}
+:root{--orange:#FF5A00;--black:#111;--bg:#0f0f0f;--card:#1c1c1e;--text:#fff}
+*{box-sizing:border-box;font-family:system-ui}
+body{margin:0;background:var(--bg);color:var(--text)}
+header{background:var(--black);padding:12px 16px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:10;border-bottom:3px solid var(--orange)}
+header img{height:42px;background:#fff;border-radius:8px;padding:4px}
+header h1{margin:0;font-size:18px} header h1 span{color:var(--orange)}
+.main{display:grid;grid-template-columns:1fr 360px;gap:12px;padding:12px}
+@media(max-width:900px){.main{grid-template-columns:1fr}}
+.card{background:var(--card);border-radius:16px;padding:14px}
+input,button{border-radius:12px;border:none;padding:12px;width:100%;margin:4px 0}
+input{background:#2a2a2e;color:#fff}
+button{background:var(--orange);color:#fff;font-weight:700;cursor:pointer}
+button.sec{background:#2a2a2e}
+.products{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px;margin-top:10px}
+.prod{background:#2a2a2e;border-radius:12px;padding:10px;text-align:center;cursor:pointer;border:1px solid transparent}
+.prod:hover{border-color:var(--orange)}
+.prod b{color:var(--orange)}
+#reader{width:100%;border-radius:12px;overflow:hidden;display:none}
+.cart-item{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #333}
+.total{font-size:22px;font-weight:900;color:var(--orange);text-align:center;margin:10px 0}
+@media print{
+ body *{visibility:hidden}
+ #receipt,#receipt *{visibility:visible}
+ #receipt{position:absolute;left:0;top:0;width:80mm;padding:5mm;background:#fff;color:#000}
+}
 </style>
 </head>
 <body>
-<h2>🧾 RBooSH POS - الحسكة</h2>
+<header>
+<img src="logo.png.png" alt="logo">
+<h1>RBooSH <span>POS</span> | يبيع حتى بدون نت</h1>
+</header>
 
+<div class="main">
 <div class="card">
-<h3>إضافة منتج</h3>
-<input id="pname" placeholder="اسم المنتج مثلا: بيبسي">
-<input id="pprice" type="number" placeholder="السعر">
-<button onclick="addProd()">حفظ المنتج</button>
+<div style="display:flex;gap:6px">
+<input id="search" placeholder="بحث باسم المنتج أو باركود...">
+<button onclick="startScan()" style="width:120px">📷 سكان</button>
+</div>
+<div id="reader"></div>
+<div class="products" id="products"></div>
+
+<h3 style="margin-top:20px">➕ اضافة منتج جديد</h3>
+<input id="pBarcode" placeholder="باركود (اختياري)">
+<input id="pName" placeholder="اسم المنتج">
+<input id="pPrice" type="number" placeholder="السعر">
+<input id="pStock" type="number" placeholder="الكمية">
+<button onclick="addProduct()">حفظ المنتج</button>
 </div>
 
 <div class="card">
-<h3>المنتجات</h3>
-<div id="products"></div>
-</div>
+<h3>🛒 السلة</h3>
+<div id="cart"></div>
+<div class="total" id="total">0 ل.س</div>
+<input id="custPhone" placeholder="رقم واتساب الزبون (963...)">
+<button onclick="checkout()">💳 بيع + طباعة فاتورة</button>
+<button class="sec" onclick="sendWhatsApp()">📲 ارسال الفاتورة واتساب</button>
+<button class="sec" onclick="clearCart()">🗑️ تفريغ</button>
 
-<div class="card">
-<h3>الفاتورة</h3>
-<div id="bill">السلة فاضية</div>
-<h2 id="total">المجموع: 0 ل.س</h2>
-<button onclick="window.print()">🖨️ طباعة 58mm</button>
-<button onclick="sendWA()" style="background:#25D366">📲 ارسال واتساب</button>
-<button onclick="clearCart()" style="background:#da3633">مسح</button>
+<div id="receipt" style="display:none">
+<center><img src="logo.png.png" style="height:60px"><br>
+<b>RBooSH POS</b><br><small id="rDate"></small><hr></center>
+<div id="rItems"></div><hr>
+<b id="rTotal"></b><br><br>
+<center>شكراً لزيارتكم<br>يبيع حتى بدون نت</center>
+</div>
+</div>
 </div>
 
 <script>
-let prods = JSON.parse(localStorage.getItem('rboosh_prods')||'[]');
-let cart = JSON.parse(localStorage.getItem('rboosh_cart')||'[]');
-function save(){localStorage.setItem('rboosh_prods',JSON.stringify(prods));localStorage.setItem('rboosh_cart',JSON.stringify(cart));render();}
-function addProd(){
-let n=pname.value, pr=Number(pprice.value);
-if(!n||!pr)return alert('عبّي البيانات');
-prods.push({n,pr});pname.value='';pprice.value='';save();
+let products = JSON.parse(localStorage.getItem('rboosh_products')||'[]');
+let cart = [];
+if(products.length==0){
+ products=[{barcode:'123',name:'مشروب غازي',price:5000,stock:50},{barcode:'456',name:'شيبس',price:3000,stock:100}];
+ saveProducts();
 }
-function addToCart(i){cart.push(prods[i]);save();}
-function clearCart(){cart=[];save();}
-function sendWA(){
-let txt=`*فاتورة RBooSH POS*%0A`;let tot=0;
-cart.forEach(c=>{txt+=`${c.n} - ${c.pr}%0A`;tot+=c.pr});
-txt+=`%0A*المجموع: ${tot} ل.س*`;
-window.open(`https://wa.me/?text=${txt}`,'_blank');
+function saveProducts(){localStorage.setItem('rboosh_products',JSON.stringify(products));}
+function renderProducts(){
+ const q=document.getElementById('search').value.toLowerCase();
+ const c=document.getElementById('products'); c.innerHTML='';
+ products.filter(p=>p.name.toLowerCase().includes(q)||p.barcode.includes(q)).forEach(p=>{
+  c.innerHTML+=`<div class="prod" onclick="addToCart('${p.barcode}')"><div>${p.name}</div><b>${p.price}</b><br><small>متوفر: ${p.stock}</small><br><small>${p.barcode}</small></div>`;
+ });
 }
-function render(){
-products.innerHTML=prods.map((p,i)=>`<div class="prod"><span>${p.n} - ${p.pr}</span><button onclick="addToCart(${i})" style="width:auto;padding:5px 10px">+ اضافة</button></div>`).join('');
-let tot=0;bill.textContent=cart.map(c=>{tot+=c.pr;return `${c.n} - ${c.pr}`}).join('\n')||'السلة فاضية';
-total.textContent=`المجموع: ${tot} ل.س`;
+function renderCart(){
+ const c=document.getElementById('cart'); c.innerHTML='';
+ let t=0;
+ cart.forEach((item,i)=>{
+  t+=item.price*item.qty;
+  c.innerHTML+=`<div class="cart-item"><span>${item.name} x${item.qty}</span><span>${item.price*item.qty} <button onclick="removeCart(${i})" style="width:auto;padding:2px 8px;background:#ff3333">x</button></span></div>`;
+ });
+ document.getElementById('total').innerText=t+' ل.س';
 }
-render();
+function addProduct(){
+ const p={barcode:document.getElementById('pBarcode').value||Date.now()+'',name:document.getElementById('pName').value,price:+document.getElementById('pPrice').value,stock:+document.getElementById('pStock').value};
+ if(!p.name||!p.price)return alert('اكمل البيانات');
+ products.push(p); saveProducts(); renderProducts();
+ document.getElementById('pName').value=''; document.getElementById('pBarcode').value='';
+}
+function addToCart(barcode){
+ const p=products.find(x=>x.barcode==barcode); if(!p||p.stock<=0)return alert('غير متوفر');
+ let it=cart.find(x=>x.barcode==barcode);
+ if(it)it.qty++; else cart.push({...p,qty:1});
+ renderCart();
+}
+function removeCart(i){cart.splice(i,1);renderCart();}
+function clearCart(){cart=[];renderCart();}
+function checkout(){
+ if(cart.length==0)return;
+ document.getElementById('rDate').innerText=new Date().toLocaleString('ar-SY');
+ let h=''; let t=0;
+ cart.forEach(i=>{h+=`<div style="display:flex;justify-content:space-between"><span>${i.name} x${i.qty}</span><span>${i.price*i.qty}</span></div>`; t+=i.price*i.qty; let pr=products.find(p=>p.barcode==i.barcode); if(pr)pr.stock-=i.qty;});
+ document.getElementById('rItems').innerHTML=h;
+ document.getElementById('rTotal').innerText='المجموع: '+t+' ل.س';
+ saveProducts(); renderProducts();
+ window.print();
+ clearCart();
+}
+function sendWhatsApp(){
+ if(cart.length==0)return alert('السلة فاضية');
+ let phone=document.getElementById('custPhone').value; if(!phone)return alert('حط رقم الواتساب');
+ let msg='*فاتورة RBooSH POS*%0A';
+ let t=0; cart.forEach(i=>{msg+=`${i.name} x${i.qty} = ${i.price*i.qty}%0A`; t+=i.price*i.qty});
+ msg+=`%0A*المجموع: ${t} ل.س*%0Aشكراً لزيارتكم`;
+ window.open(`https://wa.me/${phone}?text=${msg}`,'_blank');
+}
+function startScan(){
+ const r=document.getElementById('reader'); r.style.display='block';
+ const qr=new Html5Qrcode('reader');
+ qr.start({facingMode:'environment'},{fps:10,qrbox:250},(txt)=>{
+  document.getElementById('search').value=txt; renderProducts(); addToCart(txt);
+  qr.stop(); r.style.display='none';
+ });
+}
+document.getElementById('search').addEventListener('input',renderProducts);
+renderProducts(); renderCart();
 </script>
 </body>
 </html>
